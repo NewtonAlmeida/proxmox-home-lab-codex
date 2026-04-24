@@ -1,0 +1,24 @@
+# Secrets and local operator state
+.env
+*.secret
+*.key
+*.pem
+*.token
+ansible/inventory.ini
+
+# Python / Ansible caches
+__pycache__/
+*.pyc
+.pytest_cache/
+.ansible/
+*.retry
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Runtime data from local NPM stack
+proxy/data/
+proxy/letsencrypt/

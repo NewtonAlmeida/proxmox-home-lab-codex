@@ -1,0 +1,90 @@
+---
+- name: Install Nginx Proxy Manager on proxy LXC
+  hosts: proxy
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Install base packages
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
+          - python3
+          - python3-apt
+        state: present
+        update_cache: true
+
+    - name: Create apt keyrings directory
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Download Docker apt key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/debian/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+
+    - name: Add Docker apt repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch={{ ansible_architecture | replace('x86_64', 'amd64') }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
+        filename: docker
+        state: present
+        update_cache: true
+
+    - name: Install Docker packages
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+
+    - name: Create Nginx Proxy Manager directory
+      ansible.builtin.file:
+        path: "{{ npm_install_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Install Nginx Proxy Manager compose file
+      ansible.builtin.copy:
+        dest: "{{ npm_install_dir }}/docker-compose.yml"
+        mode: "0644"
+        content: |
+          services:
+            nginx-proxy-manager:
+              image: jc21/nginx-proxy-manager:latest
+              container_name: nginx-proxy-manager
+              restart: unless-stopped
+              ports:
+                - "80:80"
+                - "81:81"
+                - "443:443"
+              environment:
+                TZ: "{{ npm_timezone }}"
+                DISABLE_IPV6: "true"
+              volumes:
+                - ./data:/data
+                - ./letsencrypt:/etc/letsencrypt
+
+    - name: Start Nginx Proxy Manager
+      ansible.builtin.command:
+        cmd: docker compose up -d
+        chdir: "{{ npm_install_dir }}"
+      changed_when: true
+
+    - name: Show running containers
+      ansible.builtin.command:
+        cmd: docker compose ps
+        chdir: "{{ npm_install_dir }}"
+      changed_when: false
+      register: npm_ps
+
+    - name: Print Nginx Proxy Manager status
+      ansible.builtin.debug:
+        var: npm_ps.stdout_lines

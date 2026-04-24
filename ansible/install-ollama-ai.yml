@@ -1,0 +1,62 @@
+---
+- name: Install Ollama and test a small model on the ai VM
+  hosts: ai
+  become: true
+  gather_facts: true
+
+  vars:
+    ollama_test_model: qwen2.5:0.5b-base
+
+  tasks:
+    - name: Install base packages
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - curl
+          - pciutils
+          - zstd
+        state: present
+        update_cache: true
+
+    - name: Check whether Ollama is installed
+      ansible.builtin.command: ollama --version
+      register: ollama_version
+      failed_when: false
+      changed_when: false
+
+    - name: Install Ollama using official installer
+      ansible.builtin.shell: curl -fsSL https://ollama.com/install.sh | sh
+      args:
+        executable: /bin/bash
+      when: ollama_version.rc != 0
+
+    - name: Enable and start Ollama
+      ansible.builtin.systemd:
+        name: ollama
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Check GPU visibility in ai VM
+      ansible.builtin.command: lspci
+      register: ai_lspci
+      changed_when: false
+
+    - name: Print GPU-related PCI devices
+      ansible.builtin.debug:
+        msg: "{{ ai_lspci.stdout_lines | select('search', 'VGA|3D|Display|NVIDIA|AMD|Radeon') | list }}"
+
+    - name: Pull small Ollama test model
+      ansible.builtin.command: "ollama pull {{ ollama_test_model }}"
+      changed_when: true
+
+    - name: Run small model smoke test
+      ansible.builtin.shell: "timeout 180 ollama run {{ ollama_test_model }} 'Reply with exactly: AI OK'"
+      args:
+        executable: /bin/bash
+      register: ollama_smoke_test
+      changed_when: false
+
+    - name: Print Ollama smoke test output
+      ansible.builtin.debug:
+        var: ollama_smoke_test.stdout_lines
