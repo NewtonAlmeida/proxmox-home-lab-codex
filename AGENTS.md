@@ -32,8 +32,10 @@ Primary target:
 ## Execution Rules
 
 - Prefer updating docs and scripts over giving one-off terminal instructions.
-- Use SSH to run Proxmox-native commands on `192.168.0.10`.
+- Use SSH to run Proxmox-native commands on `home-lab` / `192.168.0.10`.
+- Prefer SSH key auth with `BatchMode=yes`; do not rely on interactive password prompts.
 - Use Ansible for repeatable guest configuration when available.
+- Do not build or assume a Proxmox MCP layer unless the user explicitly asks for it later.
 - Before changing automation, inspect existing docs, scripts, and Ansible files.
 - After changing automation, update `docs/codex-cli-todo.md` if the operator steps change.
 

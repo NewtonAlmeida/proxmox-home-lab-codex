@@ -1,16 +1,50 @@
 # Codex CLI SSH Execution Guide
 
-This guide is for running the HTTPS plan from Codex CLI over SSH.
+This guide is for running the setup plan from Codex CLI over SSH.
 
 ## What Codex CLI Should Do
 
-Use SSH for Proxmox-specific work, then use Ansible for the repeatable Linux setup inside the proxy LXC.
+Use SSH for Proxmox-specific work, then use Ansible for repeatable Linux setup inside VMs and LXCs.
+
+Do not use a Proxmox MCP/API layer for this phase. SSH + Ansible is the chosen path because it is transparent, easy to audit, and already supported by the repo.
 
 | Step | Tool | Why |
 |------|------|-----|
 | Create LXC `131 proxy` | SSH to Proxmox + `pct` | Proxmox owns container creation |
+| Create/check VM `104 ai` | SSH to Proxmox + `qm` | Proxmox owns VM creation and GPU passthrough |
 | Install Docker and NPM | Ansible over SSH to `192.168.0.31` | Repeatable, readable, rerunnable |
+| Install Ollama | Ansible over SSH to `192.168.0.23` | Repeatable, readable, rerunnable |
 | Configure NPM UI | Browser/manual | Needs Cloudflare token and service-specific ports |
+
+## Noninteractive SSH Baseline
+
+Codex CLI should not depend on password prompts or interactive SSH sessions.
+
+Create a dedicated key:
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/home-lab-codex -C "codex-home-lab"
+ssh-copy-id -i ~/.ssh/home-lab-codex.pub root@192.168.0.10
+```
+
+Recommended `~/.ssh/config`:
+
+```sshconfig
+Host home-lab
+  HostName 192.168.0.10
+  User root
+  IdentityFile ~/.ssh/home-lab-codex
+  BatchMode yes
+  StrictHostKeyChecking accept-new
+```
+
+Verify:
+
+```bash
+ssh -o BatchMode=yes home-lab "hostname && pveversion"
+```
+
+After first successful connection, change `StrictHostKeyChecking accept-new` to `StrictHostKeyChecking yes`.
 
 ## Files
 
@@ -26,13 +60,13 @@ Use SSH for Proxmox-specific work, then use Ansible for the repeatable Linux set
 From the Codex CLI machine:
 
 ```bash
-scp scripts/create-proxy-lxc.sh root@192.168.0.10:/root/create-proxy-lxc.sh
+scp scripts/create-proxy-lxc.sh home-lab:/root/create-proxy-lxc.sh
 ```
 
 Run it on Proxmox:
 
 ```bash
-ssh root@192.168.0.10 "chmod +x /root/create-proxy-lxc.sh && PASSWORD='change-this-password' /root/create-proxy-lxc.sh"
+ssh home-lab "chmod +x /root/create-proxy-lxc.sh && PASSWORD='change-this-password' /root/create-proxy-lxc.sh"
 ```
 
 Replace `change-this-password` before running.
@@ -40,7 +74,7 @@ Replace `change-this-password` before running.
 ## 2. Confirm The Proxy LXC Exists
 
 ```bash
-ssh root@192.168.0.10 "pct status 131 && pct config 131"
+ssh home-lab "pct status 131 && pct config 131"
 ```
 
 Expected:
@@ -136,6 +170,8 @@ curl -Ik https://proxmox.lab.yourdomain.com
 
 ## Notes
 
-- Ansible is useful here because Docker/NPM installation is package-heavy and should be rerunnable.
+- Ansible is useful here because Docker/NPM/Ollama installation is package-heavy and should be rerunnable.
 - Proxmox LXC creation stays as an SSH script because `pct` is native to the Proxmox host.
+- Proxmox VM creation and GPU passthrough should stay in guided SSH/`qm` scripts until the process is stable.
+- Avoid interactive commands such as `pct enter` in Codex automation.
 - Keep router ports `80` and `443` closed for this local-only setup.

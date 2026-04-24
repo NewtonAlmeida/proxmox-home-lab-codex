@@ -29,39 +29,61 @@ ping -c 3 192.168.0.10
 curl -Ik https://192.168.0.10:8006
 ```
 
-- [ ] Confirm SSH to Proxmox works:
+- [ ] Create or confirm the dedicated SSH key for Codex CLI:
 
 ```bash
-ssh root@192.168.0.10 "hostname && pveversion"
+ssh-keygen -t ed25519 -f ~/.ssh/home-lab-codex -C "codex-home-lab"
 ```
 
-- [ ] If `home-lab` should resolve locally, test it:
+- [ ] Install the public key on Proxmox:
 
 ```bash
-ping -c 3 home-lab
-ssh root@home-lab "hostname"
+ssh-copy-id -i ~/.ssh/home-lab-codex.pub root@192.168.0.10
 ```
 
-If `home-lab` does not resolve, continue using `192.168.0.10`.
+- [ ] Add this SSH config entry on the Codex CLI machine:
+
+```sshconfig
+Host home-lab
+  HostName 192.168.0.10
+  User root
+  IdentityFile ~/.ssh/home-lab-codex
+  BatchMode yes
+  StrictHostKeyChecking accept-new
+```
+
+- [ ] Confirm noninteractive SSH to Proxmox works:
+
+```bash
+ssh -o BatchMode=yes home-lab "hostname && pveversion"
+```
+
+- [ ] If `home-lab` does not resolve through SSH config or DNS, continue using this explicit form:
+
+```bash
+ssh -i ~/.ssh/home-lab-codex -o BatchMode=yes root@192.168.0.10 "hostname && pveversion"
+```
+
+- [ ] After the first successful connection, change `StrictHostKeyChecking accept-new` to `StrictHostKeyChecking yes` in SSH config.
 
 ## 2. Confirm Proxmox Is Ready
 
 - [ ] Check storage:
 
 ```bash
-ssh root@192.168.0.10 "pvesm status"
+ssh home-lab "pvesm status"
 ```
 
 - [ ] Check network bridge:
 
 ```bash
-ssh root@192.168.0.10 "ip addr show vmbr0 && ip route"
+ssh home-lab "ip addr show vmbr0 && ip route"
 ```
 
 - [ ] Check available LXC templates:
 
 ```bash
-ssh root@192.168.0.10 "pveam update && pveam available --section system | grep debian-12"
+ssh home-lab "pveam update && pveam available --section system | grep debian-12"
 ```
 
 ## 3. Prepare Ansible
@@ -142,19 +164,19 @@ curl http://192.168.0.23:11434/api/tags
 - [ ] Copy the LXC creation script:
 
 ```bash
-scp scripts/create-proxy-lxc.sh root@192.168.0.10:/root/create-proxy-lxc.sh
+scp scripts/create-proxy-lxc.sh home-lab:/root/create-proxy-lxc.sh
 ```
 
 - [ ] Run the script on Proxmox:
 
 ```bash
-ssh root@192.168.0.10 "chmod +x /root/create-proxy-lxc.sh && PASSWORD='replace-this-password' /root/create-proxy-lxc.sh"
+ssh home-lab "chmod +x /root/create-proxy-lxc.sh && PASSWORD='replace-this-password' /root/create-proxy-lxc.sh"
 ```
 
 - [ ] Verify LXC `131 proxy`:
 
 ```bash
-ssh root@192.168.0.10 "pct status 131 && pct config 131"
+ssh home-lab "pct status 131 && pct config 131"
 ```
 
 - [ ] Confirm SSH to the proxy LXC works:
@@ -301,3 +323,5 @@ curl -Ik https://zima.lab.yourdomain.com
 - Do not store Cloudflare tokens in this repo.
 - Keep VM system disks on internal storage.
 - Keep the external enclosure for data only.
+- Use SSH + Ansible for this phase; do not introduce Proxmox MCP yet.
+- Codex-run SSH commands must be noninteractive and use key auth.
