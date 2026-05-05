@@ -17,6 +17,7 @@ Before shutdown, these guests existed on `home-lab`:
 | ID | Name | Type | IP | Last known state before host shutdown |
 |----|------|------|----|--------------------------------------|
 | 102 | `zimaos` | VM | `192.168.0.22` | Gracefully stopped |
+| 104 | `ai` | VM | `192.168.0.23` | Running desktop stack for computer use |
 | 120 | `ha` | LXC | `192.168.0.20` | Gracefully stopped |
 | 130 | `pihole` | LXC | `192.168.0.30` | Gracefully stopped |
 | 131 | `proxy` | LXC | `192.168.0.31` | Gracefully stopped |
@@ -61,6 +62,17 @@ The new `home-lab` had about 127G free on `local-lvm` at last check. That is
 enough for system-disk restore tests, but not enough for the old ZimaOS 7T data
 disk.
 
+## AI VM Access Layer
+
+| Item | Value | Notes |
+|------|-------|-------|
+| AI VM | `104` / `ai` | `codex-agent` desktop stack for computer use |
+| AI VM IP | `192.168.0.23` | Raw VNC stays private on the VM |
+| DNS name | `ai.home` | Resolves to the proxy through Pi-hole |
+| Pi-hole | `130` / `pihole` | `192.168.0.30` |
+| Proxy | `131` / `proxy` | `192.168.0.31` |
+| Desktop URL | `http://ai.home/vnc.html?autoconnect=true&resize=remote` | LAN access through Nginx Proxy Manager |
+
 ## Work Already Done On New Host
 
 - Installed Proxmox on `192.168.0.10`.
@@ -69,5 +81,5 @@ disk.
 - Created fresh Home Assistant Core LXC `120`.
 - Created Pi-hole LXC `130`.
 - Created Nginx Proxy Manager LXC `131`.
-- Skipped AI VM by operator request.
+- Created AI VM `104` and wired `ai.home` through Pi-hole and the proxy.
 
