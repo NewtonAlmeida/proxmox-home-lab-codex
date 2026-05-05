@@ -1,102 +1,118 @@
-# Proxmox Home Lab Codex
+# Desktop-server-codex-05-05
 
-Documentation, runbooks, and automation for migrating a home lab into a single bare-metal Proxmox host.
+This repo documents a temporary server on a desktop, built by Codex, and keeps
+the current state and the remaining work in one place.
 
-The repo is organized for both a human operator and Codex CLI. It includes architecture notes, a Codex instruction file, SSH execution checklists, Ansible playbooks, and helper scripts for the first services.
+Start here:
 
-## Target Architecture
+- [PROJECT-OVERVIEW.md](./PROJECT-OVERVIEW.md)
+- [docs/control-panel.md](./docs/control-panel.md)
+- [docs/codex-cli-todo.md](./docs/codex-cli-todo.md)
+
+## Current Build
 
 | Item | Value |
 |------|-------|
-| Proxmox hostname | `home-lab` |
-| Proxmox IP | `192.168.0.10/24` |
-| Gateway | `192.168.0.1` |
-| DNS | `192.168.0.1` |
-| RAM | 16GB |
-| HTTPS proxy | Nginx Proxy Manager |
-| Proxy IP | `192.168.0.31` |
-| AI VM | `ai` at `192.168.0.23` |
+| Host | Desktop Proxmox node `home-lab` at `192.168.0.10` |
+| DNS | Pi-hole at `192.168.0.30` for local testing |
+| HTTPS proxy | Nginx Proxy Manager at `192.168.0.31` |
+| Home Assistant | LXC `120 ha` at `192.168.0.20` |
+| ZimaOS | VM `102 zimaos` at `192.168.0.22` |
+| Codex VM | VM `104 codex-agent` at `192.168.0.23` |
 
-## Network Plan
+## What Is Done
 
-| Range | Purpose |
-|-------|---------|
-| `192.168.0.10-19` | Proxmox and management |
-| `192.168.0.20-29` | VMs |
-| `192.168.0.30-39` | LXC containers |
-| `192.168.0.40-99` | Network devices |
-| `192.168.0.100-199` | Apps and temporary services |
-| `192.168.0.200-249` | Workstations and user devices |
+- Proxmox is installed and reachable on the desktop host.
+- SSH key auth to the host is working.
+- Home Assistant, Pi-hole, Nginx Proxy Manager, ZimaOS, and the Codex VM are up.
+- The Codex VM browser console is available at `http://ai.home/vnc.html?autoconnect=true&resize=remote`.
+- `.home` records exist for `ai.home` and `pihole.home` in direct Pi-hole testing.
+- The repo docs have been updated to match the live build.
 
-## Planned Services
+## What Is Planned
 
-| ID | Name | Type | IP | Purpose |
-|----|------|------|----|---------|
-| Host | `home-lab` | Proxmox | `192.168.0.10` | Hypervisor |
-| 100 | `hub` | VM | `192.168.0.20` | Gemini management hub |
-| 101 | `haos` | VM | `192.168.0.21` | Home Assistant OS |
-| 102 | `zimaos` | VM | `192.168.0.22` | NAS and app platform |
-| 104 | `ai` | VM | `192.168.0.23` | Ollama with exclusive GPU passthrough |
-| 103 | `trip-logger` | LXC | `192.168.0.30` | Small service |
-| 131 | `proxy` | LXC | `192.168.0.31` | Nginx Proxy Manager |
+- Finalize local DNS naming and decide the long-term HTTPS naming scheme.
+- Confirm or change the Nginx Proxy Manager admin login; the current username
+  and password are stored in Bitwarden.
+- Attach external storage for ZimaOS data and backups.
+- Configure ZimaOS apps and backup jobs.
+- Review GPU passthrough and Ollama only if the AI VM needs local model work.
+- Add proxy hosts for the services that need friendly URLs.
 
-## Repository Structure
+## Repo Structure
 
 | Path | Purpose |
 |------|---------|
 | `AGENTS.md` | Official Codex project instructions |
 | `codex.md` | Repo map and operator entrypoint |
-| `docs/` | Human docs, runbooks, and migration checklists |
+| `docs/` | Human docs, runbooks, and project status pages |
 | `scripts/` | Proxmox-side helper scripts |
 | `ansible/` | Repeatable guest configuration playbooks |
 | `proxy/` | Nginx Proxy Manager Docker Compose files |
-| `rules/` | Safety and Codex workflow rules |
+| `rules/` | Repo-specific operational and safety rules |
 
-## Important Docs
+## Primary Docs
 
 | File | Purpose |
 |------|---------|
-| `docs/documentation.md` | Editable human summary |
-| `docs/home-lab-structure.md` | Full target architecture |
-| `docs/codex-cli-todo.md` | Step-by-step Codex CLI checklist |
-| `docs/codex-cli-ssh-execution.md` | SSH and Ansible execution guide |
-| `docs/https-local-npm.md` | Local HTTPS with Nginx Proxy Manager |
-| `docs/ai-vm-ollama.md` | AI VM, GPU passthrough, and Ollama |
+| `PROJECT-OVERVIEW.md` | Friendly project overview |
+| `docs/control-panel.md` | Current-state tracker |
+| `docs/home-lab-structure.md` | Target architecture |
+| `docs/codex-cli-todo.md` | Codex CLI execution checklist |
+| `docs/codex-cli-ssh-execution.md` | SSH/Ansible execution guide |
+| `docs/https-local-npm.md` | Nginx Proxy Manager HTTPS runbook |
+| `docs/ai-vm-ollama.md` | AI VM, GPU passthrough, and Ollama runbook |
 
 ## Automation
 
 | File | Description |
 |------|-------------|
 | `scripts/create-proxy-lxc.sh` | Creates Debian LXC `131 proxy` at `192.168.0.31` |
+| `scripts/create-pihole-lxc.sh` | Creates Debian LXC `130 pihole` at `192.168.0.30` |
+| `scripts/create-home-assistant-lxc.sh` | Creates Debian LXC `120 ha` at `192.168.0.20` |
 | `ansible/install-nginx-proxy-manager.yml` | Installs Docker and Nginx Proxy Manager inside `proxy` |
-| `ansible/install-ollama-ai.yml` | Installs Ollama and tests `qwen2.5:0.5b-base` on the `ai` VM |
+| `ansible/install-pihole.yml` | Installs and configures Pi-hole |
+| `ansible/install-home-assistant.yml` | Installs Home Assistant Core |
+| `ansible/install-ollama-ai.yml` | Installs Ollama and tests `qwen2.5:0.5b-base` on the `codex-agent` VM |
 
-## Local HTTPS Plan
+## DNS And Local HTTPS Plan
 
-The lab uses Nginx Proxy Manager locally, with Cloudflare DNS challenge certificates.
+Current DNS state:
+
+| Name | Target | Status |
+|------|--------|--------|
+| `ai.home` | `192.168.0.31` | Confirmed via Pi-hole direct query |
+| `pihole.home` | `192.168.0.30` | Confirmed via Pi-hole direct query |
+| Router/DHCP DNS | `192.168.0.30` | Not changed yet |
+
+Use `.home` for current local testing. Keep the Cloudflare-backed
+`lab.yourdomain.com` style names below as the future trusted HTTPS plan.
 
 | DNS Name | Local Target |
 |----------|--------------|
 | `proxmox.lab.yourdomain.com` | `https://192.168.0.10:8006` |
-| `haos.lab.yourdomain.com` | `http://192.168.0.21:8123` |
+| `ha.lab.yourdomain.com` | `http://192.168.0.20:8123` |
 | `zima.lab.yourdomain.com` | `http://192.168.0.22` |
-| `hub.lab.yourdomain.com` | `http://192.168.0.20` |
-| `trip.lab.yourdomain.com` | `http://192.168.0.30` |
+| `pihole.lab.yourdomain.com` | `http://192.168.0.30/admin/` |
+| `hub.lab.yourdomain.com` | TBD after hub migration |
+| `trip.lab.yourdomain.com` | TBD after trip-logger migration |
 
 Router ports `80` and `443` should stay closed for this local-only setup.
 
 ## AI VM Plan
 
-The `ai` VM must be tested before continuing the rest of the migration.
+VM `104 codex-agent` is the current AI VM project.
 
-Rules:
-
-- VM ID: `104`
-- IP: `192.168.0.23`
-- GPU passthrough belongs only to this VM
-- Install Ollama
-- Test small model `qwen2.5:0.5b-base`
-- Stop other migration work if the small model test fails
+| Field | Value |
+|-------|-------|
+| VM ID | `104` |
+| VM name | `codex-agent` |
+| IP | `192.168.0.23` |
+| OS | Ubuntu 24.04.4 LTS |
+| SSH user | `root` |
+| Sudo | yes |
+| Browser access | `http://ai.home/vnc.html?autoconnect=true&resize=remote` |
+| Role | local AI workstation / Codex agent experiments |
 
 ## Safety Rules
 
@@ -109,15 +125,15 @@ Rules:
 
 ## Recommended Operator Flow
 
-1. Read `AGENTS.md` and `codex.md`.
-2. Follow `docs/codex-cli-todo.md`.
-3. Confirm SSH to `root@192.168.0.10`.
-4. Create and validate VM `104 ai`.
-5. Install Ollama and run the small model test.
-6. Create LXC `131 proxy`.
-7. Install Nginx Proxy Manager.
-8. Configure local DNS and Cloudflare DNS challenge certificates.
-9. Continue migration of HAOS, trip-logger, hub, and ZimaOS.
+1. Read `PROJECT-OVERVIEW.md`.
+2. Read `docs/control-panel.md` for the live status.
+3. Read `docs/codex-cli-todo.md` for the step-by-step checklist.
+4. Confirm SSH to `root@192.168.0.10`.
+5. Confirm VM `104 codex-agent` SSH and AI tooling from the operator machine.
+6. Keep router/firewall DNS unchanged until the project is ready for a broader cutover.
+7. Finish the local DNS and HTTPS plan.
+8. Attach external storage and set up ZimaOS apps and backups.
+9. Add proxy hosts for the services that need clean URLs.
 
 ## Validation
 
@@ -126,7 +142,10 @@ When tools are available:
 ```bash
 shellcheck scripts/*.sh
 ansible-playbook --syntax-check ansible/install-nginx-proxy-manager.yml
+ansible-playbook --syntax-check ansible/install-pihole.yml
+ansible-playbook --syntax-check ansible/install-home-assistant.yml
 ansible-playbook --syntax-check ansible/install-ollama-ai.yml
 ```
 
-If those tools are not installed, manually inspect the changed script/playbook and update the relevant docs.
+If those tools are not installed, manually inspect the changed script/playbook
+and update the relevant docs.

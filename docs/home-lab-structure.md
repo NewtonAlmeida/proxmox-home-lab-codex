@@ -1,17 +1,41 @@
-# HOME LAB STRUCTURE - SINGLE PROXMOX TARGET 2026
+# Desktop-server-codex-05-05 Architecture
 
 ## Overview
 
 | Tier | Description |
 |------|-------------|
-| Type | Permanent single-node Proxmox home lab |
+| Type | Temporary server on a desktop, built by Codex |
 | Host OS | Proxmox VE on bare metal |
 | Proxmox IP | 192.168.0.10 |
 | RAM | 16GB |
-| Main Services | hub, Home Assistant OS, ZimaOS, ai/Ollama, trip-logger, local HTTPS proxy |
+| Main Services | ZimaOS, Home Assistant, Pi-hole, local HTTPS proxy, codex-agent AI VM, future hub/trip migration |
 | HTTPS | Nginx Proxy Manager LXC at 192.168.0.31 |
 | Storage | Internal disk for systems, external enclosure for data only |
 | Windows | Removed from the new server; keep separate workstation if needed |
+
+---
+
+## Current Deployed State - 2026-05-05
+
+| ID | Name | Type | IP | Status | Notes |
+|----|------|------|----|--------|-------|
+| Host | home-lab | Proxmox | 192.168.0.10 | Running | SSH key auth and web UI work. |
+| 102 | zimaos | VM | 192.168.0.22 | Running | Installed from ZimaOS installer image; initial user setup complete. |
+| 104 | codex-agent | VM | 192.168.0.23 | Running | AI VM project; browser access `http://ai.home/vnc.html?autoconnect=true&resize=remote`; Ubuntu 24.04.4 LTS, root SSH user, sudo installed. |
+| 120 | ha | LXC | 192.168.0.20 | Running | Home Assistant Core at `http://192.168.0.20:8123`. |
+| 130 | pihole | LXC | 192.168.0.30 | Running | Pi-hole DNS and web UI at `http://192.168.0.30/admin/`; router/DHCP DNS not cut over. |
+| 131 | proxy | LXC | 192.168.0.31 | Running | Nginx Proxy Manager at `http://192.168.0.31:81`. |
+
+Remaining work:
+
+- Change the Nginx Proxy Manager default login if it has not already been changed.
+- Keep router/firewall DNS unchanged until Pi-hole cutover is intentionally done.
+- Complete `.home` local DNS records for Windows/local testing.
+- Configure Cloudflare DNS challenge and NPM proxy hosts for the future trusted HTTPS plan.
+- Attach or troubleshoot the external USB storage enclosure for ZimaOS data.
+- Configure ZimaOS apps: Vaultwarden, Cloudflare Tunnel, and Immich.
+- Configure backups and test restores.
+- Revisit AI VM and GPU passthrough only if local model work becomes a requirement.
 
 ---
 
@@ -27,14 +51,13 @@ INTERNET
 Proxmox Host - 192.168.0.10
     │
     ├─ VMs
-    │   ├─ [100] hub    → 192.168.0.20
-    │   ├─ [101] haos   → 192.168.0.21
-    │   ├─ [102] zimaos → 192.168.0.22
-    │   └─ [104] ai     → 192.168.0.23
+    │   ├─ [102] zimaos     → 192.168.0.22
+    │   └─ [104] codex-agent → 192.168.0.23
     │
     └─ LXC Containers
-        ├─ [103] trip-logger → 192.168.0.30
-        └─ [131] proxy       → 192.168.0.31
+        ├─ [120] ha       → 192.168.0.20 (Home Assistant)
+        ├─ [130] pihole    → 192.168.0.30 (DNS + DHCP)
+        └─ [131] proxy    → 192.168.0.31 (Nginx Proxy Manager)
 ```
 
 ---
@@ -48,6 +71,18 @@ Proxmox Host - 192.168.0.10
 | 192.168.0.20-29 | VMs |
 | 192.168.0.30-39 | LXC containers |
 | 192.168.0.40-99 | Network devices, switches, access points |
+
+---
+
+## Target Services
+
+| ID | Name | Type | IP | Purpose |
+|----|------|------|-----|---------|
+| 102 | zimaos | VM | 192.168.0.22 | NAS + app platform |
+| 104 | codex-agent | VM | 192.168.0.23 | AI/Codex agent project |
+| 120 | ha | LXC | 192.168.0.20 | Home Assistant |
+| 130 | pihole | LXC | 192.168.0.30 | DNS + DHCP |
+| 131 | proxy | LXC | 192.168.0.31 | Nginx Proxy Manager |
 | 192.168.0.100-199 | Apps, services, temporary migrations |
 | 192.168.0.200-249 | Workstations and user devices |
 
@@ -60,11 +95,10 @@ Use DHCP reservations for services where possible. Keep the Proxmox host static.
 | ID | Name | Type | IP | CPU | RAM | Disk | Notes |
 |----|------|------|----|-----|-----|------|-------|
 | Host | proxmox | Bare metal | 192.168.0.10 | host | host | internal disk | Hypervisor |
-| 100 | hub | VM | 192.168.0.20 | 2 vCPU | 2GB | 32GB | Gemini management hub |
-| 101 | haos | VM | 192.168.0.21 | 2 vCPU | 4GB | 64GB | Home Assistant OS |
-| 102 | zimaos | VM | 192.168.0.22 | 4 vCPU | 6GB | 64GB system disk | NAS/app platform; enclosure for data |
-| 104 | ai | VM | 192.168.0.23 | 4 vCPU | 6GB | 64GB+ | Ollama test VM; only VM with GPU passthrough |
-| 103 | trip-logger | LXC | 192.168.0.30 | 1 vCPU | 1GB | 8-16GB | Small service |
+| 102 | zimaos | VM | 192.168.0.22 | 4 vCPU | 6GB | 64GB system disk | NAS/app platform; enclosure pending |
+| 104 | codex-agent | VM | 192.168.0.23 | 4 vCPU | 6GB | 40GB | AI/Codex agent project VM |
+| 120 | ha | LXC | 192.168.0.20 | 2 vCPU | 1GB+ | 8GB | Home Assistant Core |
+| 130 | pihole | LXC | 192.168.0.30 | 1 vCPU | 512MB | 2GB | DNS + web UI |
 | 131 | proxy | LXC | 192.168.0.31 | 1 vCPU | 1GB | 8GB | Nginx Proxy Manager |
 
 ### VM / CT Decisions
@@ -97,27 +131,32 @@ Rules:
 
 ---
 
-## AI VM And GPU Passthrough
+## AI VM / Codex Agent
 
-Create VM `104 ai` at `192.168.0.23` before changing the rest of the lab.
+VM `104 codex-agent` is now the AI VM project at `192.168.0.23`. It is a local
+AI workstation for Codex/OpenAI agent experiments. GPU passthrough and Ollama
+validation are still follow-up work unless separately confirmed.
 
 | Item | Value |
 |------|-------|
 | VM ID | 104 |
-| Name | ai |
+| Name | codex-agent |
 | IP | 192.168.0.23 |
-| OS | Ubuntu Server LTS or Debian |
+| OS | Ubuntu 24.04.4 LTS |
+| SSH user | root |
+| Sudo | yes |
+| Browser access | `http://ai.home/vnc.html?autoconnect=true&resize=remote` |
 | CPU | 4 vCPU |
 | RAM | 6GB initial |
-| Disk | 64GB minimum |
-| GPU | Pass through the whole GPU only to this VM |
-| First test model | `qwen2.5:0.5b-base` |
+| Disk | 40GB |
+| GPU | Not confirmed |
+| First Ollama test model | `qwen2.5:0.5b-base` |
 
 Rules:
 
-- The GPU is exclusive to VM `104 ai`.
+- If GPU passthrough is revisited, the GPU is exclusive to VM `104 codex-agent`.
 - Do not attach the GPU to HAOS, ZimaOS, hub, trip-logger, or the Proxmox console.
-- Do not continue the rest of the migration until Ollama runs a small model successfully.
+- Continue non-AI migration unless AI testing becomes the active task.
 - Use the small model test first because it is only about 398MB and proves the Ollama path works before larger models are attempted.
 
 Automation:
@@ -133,13 +172,25 @@ Automation:
 
 Use Nginx Proxy Manager in LXC `proxy` at `192.168.0.31`.
 
+Current local DNS status:
+
+| Name | Points To | Status |
+|------|-----------|--------|
+| `ai.home` | 192.168.0.31 | Confirmed via direct Pi-hole query |
+| `pihole.home` | 192.168.0.30 | Confirmed via direct Pi-hole query |
+| Router/DHCP DNS | 192.168.0.30 | Not changed yet |
+
+Use `.home` for current local/Windows testing. Keep the Cloudflare-backed
+`lab.yourdomain.com` style names below as the future trusted HTTPS plan.
+
 | Name | Points To | NPM Forwards To |
 |------|-----------|-----------------|
 | `proxmox.lab.yourdomain.com` | 192.168.0.31 | `https://192.168.0.10:8006` |
-| `haos.lab.yourdomain.com` | 192.168.0.31 | `http://192.168.0.21:8123` |
+| `ha.lab.yourdomain.com` | 192.168.0.31 | `http://192.168.0.20:8123` |
 | `zima.lab.yourdomain.com` | 192.168.0.31 | `http://192.168.0.22` |
-| `hub.lab.yourdomain.com` | 192.168.0.31 | `http://192.168.0.20` |
-| `trip.lab.yourdomain.com` | 192.168.0.31 | `http://192.168.0.30` |
+| `pihole.lab.yourdomain.com` | 192.168.0.31 | `http://192.168.0.30/admin/` |
+| `hub.lab.yourdomain.com` | 192.168.0.31 | TBD after hub migration |
+| `trip.lab.yourdomain.com` | 192.168.0.31 | TBD after trip-logger migration |
 
 Rules:
 
@@ -211,38 +262,38 @@ These are the existing services to migrate into the single-node target.
 4. Back up trip-logger data/config from current lab1 CT 103.
 5. Install Proxmox bare metal on the new single host.
 6. Create target VMs and containers using the `.20` VM range and `.30` container range.
-7. Create VM `104 ai` at `192.168.0.23`.
-8. Pass the GPU only to VM `104 ai`.
-9. Install Ollama in `ai`.
-10. Test `qwen2.5:0.5b-base` before changing anything else.
-11. Create `proxy` LXC 131 at `192.168.0.31`.
-12. Run Ansible to install Docker + Nginx Proxy Manager in `proxy`.
-13. Restore HAOS first and test `http://192.168.0.21:8123`.
-14. Restore trip-logger and test `192.168.0.30`.
-15. Restore hub and test `192.168.0.20`.
-16. Restore/create ZimaOS and attach the external enclosure for data only.
-17. Configure local DNS to point HTTPS names to `192.168.0.31`.
-18. Configure Nginx Proxy Manager proxy hosts and Cloudflare DNS-challenge certificate.
-19. Reboot Proxmox and confirm critical services auto-start.
+7. Create ZimaOS VM `102` and complete web setup.
+8. Create Home Assistant LXC `120` and confirm `http://192.168.0.20:8123`.
+9. Create Pi-hole LXC `130` and confirm DNS resolution through `192.168.0.30`.
+10. Create `proxy` LXC `131` and install Nginx Proxy Manager.
+11. Configure local DNS to point HTTPS names to `192.168.0.31`.
+12. Configure Nginx Proxy Manager proxy hosts and Cloudflare DNS-challenge certificate.
+13. Attach the external enclosure to ZimaOS for data only.
+14. Configure ZimaOS apps and backups.
+15. Restore or migrate hub and trip-logger after core services are stable.
+16. Validate VM `104 codex-agent` AI tooling; revisit GPU passthrough after BIOS/IOMMU settings are fixed if needed.
+17. Reboot Proxmox and confirm critical services auto-start.
 
 ---
 
 ## Verification Checklist
 
-- [ ] Proxmox web UI works at `https://192.168.0.10:8006`
+- [x] Proxmox web UI works at `https://192.168.0.10:8006`
 - [ ] hub works at `192.168.0.20`
-- [ ] HAOS works at `192.168.0.21:8123`
-- [ ] ZimaOS works at `192.168.0.22`
-- [ ] ai VM works at `192.168.0.23`
-- [ ] GPU is passed only to VM `104 ai`
+- [x] Home Assistant works at `192.168.0.20:8123`
+- [x] ZimaOS works at `192.168.0.22`
+- [x] AI VM `104 codex-agent` works at `192.168.0.23`
+- [ ] GPU is passed only to VM `104 codex-agent` if passthrough is enabled
 - [ ] Ollama runs `qwen2.5:0.5b-base`
 - [ ] trip-logger works at `192.168.0.30`
-- [ ] Nginx Proxy Manager works at `http://192.168.0.31:81`
-- [ ] `https://haos.lab.yourdomain.com` works locally
+- [x] Pi-hole works at `192.168.0.30`
+- [x] Nginx Proxy Manager works at `http://192.168.0.31:81`
+- [ ] `https://ha.lab.yourdomain.com` works locally
 - [ ] `https://zima.lab.yourdomain.com` works locally
 - [ ] `https://hub.lab.yourdomain.com` works locally
 - [ ] `https://trip.lab.yourdomain.com` works locally
 - [ ] `https://proxmox.lab.yourdomain.com` works locally
 - [ ] Router ports `80` and `443` remain closed
+- [ ] Router/DHCP DNS points clients to Pi-hole `192.168.0.30`
 - [ ] External enclosure is used for data only
 - [ ] Backups exist outside the Proxmox system disk
