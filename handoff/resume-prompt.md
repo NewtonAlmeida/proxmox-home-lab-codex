@@ -16,7 +16,9 @@ Read these files first:
 - handoff/manual-backups.md
 - handoff/next-steps.md
 
-Current target Proxmox is home-lab at 192.168.0.10. It was shut down after creating VM 102 zimaos, LXC 120 ha, LXC 130 pihole, and LXC 131 proxy. Power it on before testing SSH.
+Current target Proxmox is home-lab at 192.168.0.10. It was shut down after creating VM 102 zimaos, VM 104 ai, LXC 120 ha, LXC 130 pihole, and LXC 131 proxy. Power it on before testing SSH.
+
+The AI desktop access path is already live: `ai.home` resolves through Pi-hole at 192.168.0.30 to the proxy at 192.168.0.31, which forwards to the AI VM at 192.168.0.23. Use `http://ai.home/vnc.html?autoconnect=true&resize=remote` for LAN desktop access. Windows clients that need the desktop should use Pi-hole as DNS so they can resolve `ai.home`.
 
 Source Proxmox is lab2 at 192.168.0.11. Old HAOS is VM 100 at 192.168.0.176. Old ZimaOS is VM 101 at 192.168.0.163. Use SSH. lab2 uses the Bitwarden SSH agent. home-lab uses ~/.ssh/home-lab-codex.
 
