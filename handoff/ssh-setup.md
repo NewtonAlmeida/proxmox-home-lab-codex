@@ -13,6 +13,10 @@ Host home-lab
 Host lab2
   HostName 192.168.0.11
   User root
+
+Host codex-agent
+  HostName 192.168.0.23
+  User root
 ```
 
 `home-lab` should use a normal SSH key file. `lab2` uses the user's Bitwarden
@@ -26,6 +30,7 @@ After powering on `home-lab`, run:
 ```bash
 ssh home-lab "hostname && pveversion"
 ssh lab2 "hostname && pveversion"
+ssh codex-agent "hostname && id && sudo -n true"
 ```
 
 If `home-lab` fails with too many SSH identities, use:
@@ -34,10 +39,16 @@ If `home-lab` fails with too many SSH identities, use:
 ssh -i ~/.ssh/home-lab-codex -o IdentitiesOnly=yes home-lab "hostname && pveversion"
 ```
 
+If direct SSH to `codex-agent` is not configured yet, use Proxmox guest agent
+checks from `home-lab` first:
+
+```bash
+ssh home-lab "qm guest exec 104 -- bash -lc 'hostname; id; cat /etc/os-release | head -5'"
+```
+
 ## Safety Rules
 
 - Do not copy private SSH keys into this repository.
 - Do not commit Bitwarden exports or tokens.
 - Do not put passwords in Markdown files.
 - If SSH access to `lab2` prompts through Bitwarden, allow the prompt manually.
-

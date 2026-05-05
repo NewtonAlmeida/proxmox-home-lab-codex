@@ -11,7 +11,7 @@ Do not use a Proxmox MCP/API layer for this phase. SSH + Ansible is the chosen p
 | Step | Tool | Why |
 |------|------|-----|
 | Create LXC `131 proxy` | SSH to Proxmox + `pct` | Proxmox owns container creation |
-| Create/check VM `104 ai` | SSH to Proxmox + `qm` | Proxmox owns VM creation and GPU passthrough |
+| Check VM `104 codex-agent` | SSH to Proxmox + `qm` | Proxmox owns VM config and guest-agent checks |
 | Install Docker and NPM | Ansible over SSH to `192.168.0.31` | Repeatable, readable, rerunnable |
 | Install Ollama | Ansible over SSH to `192.168.0.23` | Repeatable, readable, rerunnable |
 | Configure NPM UI | Browser/manual | Needs Cloudflare token and service-specific ports |
@@ -143,8 +143,10 @@ Do these manually in the Nginx Proxy Manager UI:
    - `*.lab.yourdomain.com`
    - `lab.yourdomain.com`
 3. Add proxy hosts for:
-   - `haos.lab.yourdomain.com`
+   - `ha.lab.yourdomain.com`
    - `zima.lab.yourdomain.com`
+   - `ai.lab.yourdomain.com`
+   - `pihole.lab.yourdomain.com`
    - `hub.lab.yourdomain.com`
    - `trip.lab.yourdomain.com`
    - `proxmox.lab.yourdomain.com`
@@ -163,8 +165,10 @@ curl -I http://192.168.0.31:81
 After local DNS and certificates are configured:
 
 ```bash
-curl -Ik https://haos.lab.yourdomain.com
+curl -Ik https://ha.lab.yourdomain.com
 curl -Ik https://zima.lab.yourdomain.com
+curl -Ik https://ai.lab.yourdomain.com
+curl -Ik https://pihole.lab.yourdomain.com
 curl -Ik https://proxmox.lab.yourdomain.com
 ```
 
@@ -175,3 +179,185 @@ curl -Ik https://proxmox.lab.yourdomain.com
 - Proxmox VM creation and GPU passthrough should stay in guided SSH/`qm` scripts until the process is stable.
 - Avoid interactive commands such as `pct enter` in Codex automation.
 - Keep router ports `80` and `443` closed for this local-only setup.
+
+---
+
+## 8. Deploy ZimaOS VM
+
+ZimaOS runs as a VM on Proxmox. Create it via `qm` over SSH.
+
+### Create VM
+
+```bash
+ssh home-lab "qm create 102 \
+  --name zimaos \
+  --cores 2 \
+  --memory 4096 \
+  --net0 virtio,bridge=vmbr0 \
+  --scsihw virtio-scsi-single \
+  --boot order=scsi0 \
+  --bios ovmf \
+  --machine q35 \
+  --ostype l26 \
+  --onboot 1"
+```
+
+### Attach Disk
+
+```bash
+ssh home-lab "qm set 102 --scsi0 local:25,format=qcow2"
+```
+
+### Configure Network
+
+```bash
+ssh home-lab "qm set 102 --ipconfig0 ip=192.168.0.22/24,gw=192.168.0.1"
+```
+
+### USB Passthrough (Optional)
+
+If passing through USB storage:
+
+```bash
+ssh home-lab "qm set 102 --hostpci0 01:00"
+```
+
+### Start VM
+
+```bash
+ssh home-lab "qm start 102"
+```
+
+### Install ZimaOS
+
+1. Attach ZimaOS ISO to VM.
+2. Boot and follow installer.
+3. Access at `http://192.168.0.22`.
+
+---
+
+## 9. Deploy Pi-hole LXC
+
+Create Pi-hole at `192.168.0.30`.
+
+### Create LXC
+
+```bash
+ssh home-lab "pct create 130 \
+  local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst \
+  --hostname pihole \
+  --cores 1 \
+  --memory 512 \
+  --rootfs local-lvm:2 \
+  --net0 name=eth0,bridge=vmbr0,ip=192.168.0.30/24,gw=192.168.0.1 \
+  --features nesting=1 \
+  --unprivileged 1 \
+  --onboot 1 \
+  --start 1"
+```
+
+### Install Pi-hole
+
+```bash
+ssh home-lab "pct start 130"
+ssh home-lab "pct exec 130 -- curl -sSL https://install.pi-hole.net | bash -s -- --unattended"
+```
+
+### Set Admin Password
+
+```bash
+ssh home-lab "pct exec 130 -- pihole -a -p 'your-secure-password'"
+```
+
+---
+
+## 10. Deploy Home Assistant LXC
+
+Create Home Assistant at `192.168.0.20`.
+
+### Create LXC
+
+```bash
+ssh home-lab "pct create 120 \
+  local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst \
+  --hostname ha \
+  --cores 2 \
+  --memory 2048 \
+  --rootfs local-lvm:8 \
+  --net0 name=eth0,bridge=vmbr0,ip=192.168.0.20/24,gw=192.168.0.1 \
+  --features nesting=1 \
+  --unprivileged 1 \
+  --onboot 1 \
+  --start 1"
+```
+
+### Install Dependencies
+
+```bash
+ssh home-lab "pct exec 120 -- apt update"
+ssh home-lab "pct exec 120 -- apt install -y python3 python3-venv python3-pip git"
+```
+
+### Install Home Assistant
+
+```bash
+ssh home-lab "pct exec 120 -- bash -c 'cd /opt && python3 -m venv ha && /opt/ha/bin/pip install homeassistant'"
+```
+
+### Start Home Assistant
+
+```bash
+ssh home-lab "pct exec 120 -- bash -c 'source /opt/ha/bin/activate && nohup hass > /var/log/ha.log 2>&1 &'"
+```
+
+---
+
+## 11. ZimaOS App Configuration
+
+After ZimaOS VM is running at `192.168.0.22`:
+
+### Access ZimaOS
+
+```text
+http://192.168.0.22
+```
+
+### Install Apps via Market
+
+1. Open ZimaOS web UI.
+2. Go to App Market.
+3. Search and install:
+   - Vaultwarden
+   - Cloudflare Tunnel
+   - Immich
+
+### Vaultwarden Setup
+
+- Set admin token
+- Configure storage to USB
+- Access at `http://192.168.0.22`
+
+### Cloudflare Tunnel Setup
+
+- Add tunnel token
+- Configure remote access
+- Do NOT open ports publicly
+
+### Immich Setup
+
+- Configure:
+  - Photo storage: USB
+  - Database: Local storage
+- Set up backup to NAS
+
+---
+
+## 12. Network DNS Configuration
+
+Point router/firewall to use Pi-hole at `192.168.0.30`:
+
+```bash
+ssh home-lab "pct exec 130 -- pihole -a ip 192.168.0.30"
+```
+
+Or configure router DHCP to serve `192.168.0.30` as DNS.

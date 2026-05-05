@@ -16,9 +16,11 @@ Read these files first:
 - handoff/manual-backups.md
 - handoff/next-steps.md
 
-Current target Proxmox is home-lab at 192.168.0.10. It was shut down after creating VM 102 zimaos, VM 104 ai, LXC 120 ha, LXC 130 pihole, and LXC 131 proxy. Power it on before testing SSH.
+Current target Proxmox is home-lab at 192.168.0.10. At last verification it was running VM 102 zimaos, VM 104 codex-agent, LXC 120 ha, LXC 130 pihole, and LXC 131 proxy.
 
-The AI desktop access path is already live: `ai.home` resolves through Pi-hole at 192.168.0.30 to the proxy at 192.168.0.31, which forwards to the AI VM at 192.168.0.23. Use `http://ai.home/vnc.html?autoconnect=true&resize=remote` for LAN desktop access. Windows clients that need the desktop should use Pi-hole as DNS so they can resolve `ai.home`.
+VM 104 codex-agent is the new AI VM project. It is Ubuntu 24.04.4 LTS, IP 192.168.0.23, SSH user root, sudo installed. Browser access is http://ai.home/vnc.html?autoconnect=true&resize=remote. Ollama/GPU validation is not confirmed unless later docs say otherwise.
+
+Pi-hole at 192.168.0.30 works for direct DNS queries. Router/DHCP DNS has not been changed to Pi-hole. Current DNS testing uses local/Windows context and .home records. Confirmed records include ai.home -> 192.168.0.31 and pihole.home -> 192.168.0.30.
 
 Source Proxmox is lab2 at 192.168.0.11. Old HAOS is VM 100 at 192.168.0.176. Old ZimaOS is VM 101 at 192.168.0.163. Use SSH. lab2 uses the Bitwarden SSH agent. home-lab uses ~/.ssh/home-lab-codex.
 
@@ -26,4 +28,3 @@ Next goal: make clean stopped backups of old HAOS and old ZimaOS from lab2, tran
 
 Before mutating anything, inventory both Proxmox hosts and confirm disk scope, storage availability, and temporary restore VM IDs.
 ```
-

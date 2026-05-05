@@ -7,13 +7,16 @@ This setup gives the home lab friendly HTTPS names on the local network without 
 | Service | Type | IP | URL |
 |---------|------|----|-----|
 | Proxmox | Host | 192.168.0.10 | `https://proxmox.lab.yourdomain.com` |
-| hub | VM | 192.168.0.20 | `https://hub.lab.yourdomain.com` |
-| haos | VM | 192.168.0.21 | `https://haos.lab.yourdomain.com` |
+| Home Assistant | LXC | 192.168.0.20 | `https://ha.lab.yourdomain.com` |
 | zimaos | VM | 192.168.0.22 | `https://zima.lab.yourdomain.com` |
-| trip-logger | LXC | 192.168.0.30 | `https://trip.lab.yourdomain.com` |
+| AI / Codex Agent | VM | 192.168.0.23 | `https://ai.lab.yourdomain.com` |
+| pihole | LXC | 192.168.0.30 | `https://pihole.lab.yourdomain.com` |
 | proxy | LXC | 192.168.0.31 | `http://192.168.0.31:81` |
+| hub | VM | TBD | `https://hub.lab.yourdomain.com` |
+| trip-logger | LXC | TBD | `https://trip.lab.yourdomain.com` |
 
 Replace `lab.yourdomain.com` with your real Cloudflare-managed domain or subdomain.
+Current local testing uses `.home` names. Router/DHCP DNS has not been changed.
 
 ## 1. Create The Proxy LXC
 
@@ -128,17 +131,38 @@ In Nginx Proxy Manager:
 
 ## 6. Add Local DNS Records
 
-In your router, Pi-hole, or local DNS server, point each name to the proxy LXC:
+Current confirmed Pi-hole records:
+
+| DNS Name | IP |
+|----------|----|
+| `ai.home` | 192.168.0.31 |
+| `pihole.home` | 192.168.0.30 |
+
+Recommended `.home` direct local records while router DNS is not cut over:
+
+| DNS Name | IP |
+|----------|----|
+| `proxmox.home` | 192.168.0.10 |
+| `ha.home` | 192.168.0.20 |
+| `zima.home` | 192.168.0.22 |
+| `ai.home` | 192.168.0.31 |
+| `pihole.home` | 192.168.0.30 |
+| `proxy.home` | 192.168.0.31 |
+
+For the future HTTPS plan, point each certificate-backed name to the proxy LXC:
 
 | DNS Name | IP |
 |----------|----|
 | `proxmox.lab.yourdomain.com` | 192.168.0.31 |
-| `haos.lab.yourdomain.com` | 192.168.0.31 |
+| `ha.lab.yourdomain.com` | 192.168.0.31 |
 | `zima.lab.yourdomain.com` | 192.168.0.31 |
+| `ai.lab.yourdomain.com` | 192.168.0.31 |
+| `pihole.lab.yourdomain.com` | 192.168.0.31 |
 | `hub.lab.yourdomain.com` | 192.168.0.31 |
 | `trip.lab.yourdomain.com` | 192.168.0.31 |
 
 Do not open router ports `80` or `443`.
+Do not change router/DHCP DNS to Pi-hole until the operator is ready for network-wide DNS.
 
 ## 7. Add Proxy Hosts
 
@@ -146,10 +170,12 @@ In Nginx Proxy Manager, add these proxy hosts:
 
 | Domain | Scheme | Forward Hostname / IP | Port | Notes |
 |--------|--------|------------------------|------|-------|
-| `haos.lab.yourdomain.com` | `http` | `192.168.0.21` | `8123` | Enable Websockets |
+| `ha.lab.yourdomain.com` | `http` | `192.168.0.20` | `8123` | Enable Websockets |
 | `zima.lab.yourdomain.com` | `http` | `192.168.0.22` | `80` | Use `https`/`443` if ZimaOS requires it |
-| `hub.lab.yourdomain.com` | `http` | `192.168.0.20` | service port | Replace with real hub port |
-| `trip.lab.yourdomain.com` | `http` | `192.168.0.30` | service port | Replace with real trip-logger port |
+| `ai.lab.yourdomain.com` | `http` | `192.168.0.23` | service port | Fill after AI service port is known |
+| `pihole.lab.yourdomain.com` | `http` | `192.168.0.30` | `80` | Optional; keep admin local-only |
+| `hub.lab.yourdomain.com` | `http` | TBD | service port | Replace after hub migration |
+| `trip.lab.yourdomain.com` | `http` | TBD | service port | Replace after trip-logger migration |
 | `proxmox.lab.yourdomain.com` | `https` | `192.168.0.10` | `8006` | Advanced config below |
 
 For each host:
@@ -183,8 +209,10 @@ Restart Home Assistant after changing it.
 From a device on the home network:
 
 ```text
-https://haos.lab.yourdomain.com
+https://ha.lab.yourdomain.com
 https://zima.lab.yourdomain.com
+https://ai.lab.yourdomain.com
+https://pihole.lab.yourdomain.com
 https://hub.lab.yourdomain.com
 https://trip.lab.yourdomain.com
 https://proxmox.lab.yourdomain.com

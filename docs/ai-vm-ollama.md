@@ -1,27 +1,31 @@
 # AI VM With GPU Passthrough And Ollama
 
-Create and validate this VM before changing the rest of the lab.
+VM `104 codex-agent` now exists and is the AI VM project. Use this document to
+validate or extend it.
 
 ## Target
 
 | Item | Value |
 |------|-------|
 | VM ID | 104 |
-| Name | ai |
+| Name | codex-agent |
 | IP | 192.168.0.23 |
-| OS | Ubuntu Server LTS or Debian |
+| OS | Ubuntu 24.04.4 LTS |
+| SSH user | root |
+| Sudo | yes |
+| Browser access | `http://ai.home/vnc.html?autoconnect=true&resize=remote` |
 | CPU | 4 vCPU |
 | RAM | 6GB |
-| Disk | 64GB minimum |
-| GPU | Pass through the whole GPU only to this VM |
+| Disk | 40GB |
+| GPU | Not confirmed |
 | First model | `qwen2.5:0.5b-base` |
 
 ## Rules
 
-- The GPU belongs only to VM `104 ai`.
+- If GPU passthrough is enabled, the GPU belongs only to VM `104 codex-agent`.
 - Do not attach the GPU to HAOS, ZimaOS, hub, trip-logger, proxy, or any other VM/container.
-- Test `qwen2.5:0.5b-base` before continuing the rest of the migration.
-- If the test fails, stop and fix GPU/Ollama before changing anything else.
+- Test `qwen2.5:0.5b-base` before using larger local models.
+- If the test fails, fix Ollama/GPU before relying on the AI VM for migration work.
 
 ## Proxmox GPU Passthrough Notes
 
@@ -36,11 +40,11 @@ The GPU often has at least two functions:
 - VGA/3D/display controller
 - HDMI/DP audio device
 
-Pass all GPU-related functions to VM `104 ai`.
+Pass all GPU-related functions to VM `104 codex-agent`.
 
 ## Ollama Install
 
-After the VM boots and SSH works, use Ansible:
+After SSH works, use Ansible:
 
 ```bash
 ansible-playbook ansible/install-ollama-ai.yml

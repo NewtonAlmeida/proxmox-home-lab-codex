@@ -10,19 +10,42 @@ Last updated: 2026-05-05
 | IP | `192.168.0.10` |
 | User | `root` |
 | SSH key | `~/.ssh/home-lab-codex` |
-| Status | Powered off at the end of the last session |
+| Status | Running at last verification |
 
-Before shutdown, these guests existed on `home-lab`:
+Current guests on `home-lab`:
 
-| ID | Name | Type | IP | Last known state before host shutdown |
-|----|------|------|----|--------------------------------------|
-| 102 | `zimaos` | VM | `192.168.0.22` | Gracefully stopped |
-| 104 | `ai` | VM | `192.168.0.23` | Running desktop stack for computer use |
-| 120 | `ha` | LXC | `192.168.0.20` | Gracefully stopped |
-| 130 | `pihole` | LXC | `192.168.0.30` | Gracefully stopped |
-| 131 | `proxy` | LXC | `192.168.0.31` | Gracefully stopped |
+| ID | Name | Type | IP | State |
+|----|------|------|----|-------|
+| 102 | `zimaos` | VM | `192.168.0.22` | Running |
+| 104 | `codex-agent` | VM | `192.168.0.23` | Running |
+| 120 | `ha` | LXC | `192.168.0.20` | Running |
+| 130 | `pihole` | LXC | `192.168.0.30` | Running |
+| 131 | `proxy` | LXC | `192.168.0.31` | Running |
 
-The host was then shut down with `systemctl poweroff`.
+VM `104 codex-agent` is the new AI VM project. It is Ubuntu 24.04.4 LTS, uses
+SSH user `root`, has `sudo` installed, and the QEMU guest agent works.
+
+Browser access:
+
+```text
+http://ai.home/vnc.html?autoconnect=true&resize=remote
+```
+
+## DNS State
+
+Pi-hole at `192.168.0.30` answers direct DNS queries. Router/DHCP DNS has not
+been changed to Pi-hole yet; current testing is local/Windows and direct
+Pi-hole queries.
+
+Confirmed records:
+
+| Name | Target |
+|------|--------|
+| `ai.home` | `192.168.0.31` |
+| `pihole.home` | `192.168.0.30` |
+
+Use `.home` for current local testing. Keep `*.lab.yourdomain.com` style names
+for the later Cloudflare/Nginx Proxy Manager HTTPS plan.
 
 ## Source Proxmox Host
 
@@ -79,7 +102,6 @@ disk.
 - Set up SSH key access as `home-lab`.
 - Created fresh ZimaOS VM `102`.
 - Created fresh Home Assistant Core LXC `120`.
-- Created Pi-hole LXC `130`.
+- Created Pi-hole LXC `130`; direct DNS works.
 - Created Nginx Proxy Manager LXC `131`.
-- Created AI VM `104` and wired `ai.home` through Pi-hole and the proxy.
-
+- Created AI project VM `104 codex-agent`.
